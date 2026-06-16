@@ -16,8 +16,8 @@ import type {
 import {
   copyFile, lstat, mkdir, readdir, realpath, rm,
 } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join } from "node:path";
-import { fileURLToPath, pathToFileURL as to_url } from "node:url";
+import { basename, dirname, extname, join } from "node:path";
+import { pathToFileURL as to_url } from "node:url";
 import util from "node:util";
 
 export type FileInfo = {
@@ -43,22 +43,7 @@ const assert_boundary = (directory: FileRef) => {
   if (dirname(directory.path) === directory.path) throw E.reached_fs_root();
 };
 
-const as_string = (path: Path) => {
-  if (path instanceof URL) {
-    if (path.protocol !== "file:") throw E.invalid_file_url(path);
-    return fileURLToPath(path);
-  }
-  return typeof path === "string" ? parse(path) : path.path;
-};
-
-const as_join_segment = (path: Path) => {
-  if (path instanceof URL) throw E.invalid_join_path(path.href);
-  const segment = as_string(path);
-  if (segment.startsWith("file://") || isAbsolute(segment)) {
-    throw E.invalid_join_path(segment);
-  }
-  return segment;
-};
+const as_string = (path: Path) => typeof path === "string" ? path : path.path;
 
 const brand = Symbol.for("std:fs/FileRef/v0");
 
@@ -69,7 +54,7 @@ export default class FileRef
 
   constructor(path: Path) {
     assert.defined(path);
-    this.#path = as_string(path);
+    this.#path = parse(as_string(path));
   }
 
   [symbol.stream]() {
@@ -114,7 +99,7 @@ export default class FileRef
     if (paths.length === 0) return this;
     const [first, ...rest] = paths;
 
-    const path = join(this.path, as_join_segment(first));
+    const path = join(this.path, as_string(first));
     const file = new FileRef(path);
     return paths.length === 1 ? file : file.join(...rest);
   }

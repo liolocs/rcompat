@@ -39,7 +39,6 @@ import fs from "@rcompat/fs";
 
 const file = new fs.FileRef("./src/config.json");
 const absolute = new fs.FileRef("/etc/hosts");
-const fromURL = new fs.FileRef(new URL("file:///tmp/config.json"));
 
 // resolve relative to cwd
 const resolved = fs.resolve("./src");
@@ -231,7 +230,7 @@ if (Streamable.named(value)) {
 
 ```ts
 class FileRef extends Streamable {
-  constructor(path: string | URL | FileRef);
+  constructor(path: string | FileRef);
 
   path: string;
   name: string;
@@ -241,12 +240,12 @@ class FileRef extends Streamable {
   directory: FileRef;
 
   // path operations
-  join(...paths: (string | URL | FileRef)[]): FileRef; // relative segments only
+  join(...paths: (string | FileRef)[]): FileRef;
   up(levels: number): FileRef;
   webpath(): string;
   append(suffix: string): FileRef;
   bare(append?: string): FileRef;
-  debase(base: string | URL | FileRef, suffix?: string): FileRef;
+  debase(base: string | FileRef, suffix?: string): FileRef;
 
   // reading
   text(): Promise<string>;
