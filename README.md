@@ -25,6 +25,7 @@ Deno, Bun and future runtimes.
 |[@rcompat/io](packages/io)                 | Input/output            |
 |[@rcompat/is](packages/is)                 | Identity checks         |
 |[@rcompat/kv](packages/kv)                 | Key-value stores        |
+|[@rcompat/net](packages/net)               | TCP/Unix sockets        |
 |[proby](packages/proby)                    | Test runner             |
 |[@rcompat/runtime](packages/runtime)       | Runtime environment     |
 |[@rcompat/sql](packages/sql)               | SQL                     |
