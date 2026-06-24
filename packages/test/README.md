@@ -284,10 +284,10 @@ Use `spy` to wrap a function and record every call made to it. The wrapped
 function behaves identically to the original but tracks its arguments.
 
 ```ts
-import spy from "@rcompat/spy";
+import test from "@rcompat/test";
 
 const add = (a: number, b: number) => a + b;
-const tracked = spy(add);
+const tracked = test.spy(add);
 
 tracked(1, 2);
 tracked(3, 4);
@@ -301,10 +301,9 @@ Use `spy` inside a test case to make call-tracking assertions:
 
 ```ts
 import test from "@rcompat/test";
-import spy from "@rcompat/spy";
 
 test.case("tracks calls", assert => {
-  const tracked = spy((a: number, b: number) => a + b);
+  const tracked = test.spy((a: number, b: number) => a + b);
 
   assert(tracked.called).false();
   assert(tracked.calls).equals([]);
@@ -321,10 +320,9 @@ Pass a second argument to replace the implementation while still tracking calls:
 
 ```ts
 import test from "@rcompat/test";
-import spy from "@rcompat/spy";
 
 test.case("mocks implementation", assert => {
-  const tracked = spy(
+  const tracked = test.spy(
     (a: number, b: number) => a + b,
     (a: number, b: number) => a * b,
   );
@@ -510,12 +508,10 @@ asserter.
 | --------- | ---------- | --------------------------------------------------------- |
 | `factory` | `function` | Returns extra methods to attach to each `Assert` instance |
 
-### `spy`
+### `test.spy`
 
 ```ts
-import spy from "@rcompat/spy";
-
-spy<F extends (...args: any[]) => any>(fn: F, mocker?: F): Tracked<F>;
+test.spy<F extends (...args: any[]) => any>(fn: F, mocker?: F): Tracked<F>;
 ```
 
 Wrap a function to track calls. Returns the wrapped function with two extra
