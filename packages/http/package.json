@@ -24,7 +24,7 @@
   "devDependencies": {
     "@types/busboy": "^1.5.4",
     "@types/ws": "^8.18.1",
-    "undici-types": "8.4.1"
+    "undici-types": "8.5.0"
   },
   "dependencies": {
     "@rcompat/assert": "workspace:^",
