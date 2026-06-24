@@ -278,6 +278,62 @@ test.case("static mock is loaded before the spec", assert => {
 Static mocks are file-scoped when run through `proby`; they do not leak into
 later spec files.
 
+### Spying on functions
+
+Use `spy` to wrap a function and record every call made to it. The wrapped
+function behaves identically to the original but tracks its arguments.
+
+```ts
+import spy from "@rcompat/spy";
+
+const add = (a: number, b: number) => a + b;
+const tracked = spy(add);
+
+tracked(1, 2);
+tracked(3, 4);
+
+tracked.called;   // true
+tracked.calls;    // [[1, 2], [3, 4]]
+tracked.calls[0]; // [1, 2]
+```
+
+Use `spy` inside a test case to make call-tracking assertions:
+
+```ts
+import test from "@rcompat/test";
+import spy from "@rcompat/spy";
+
+test.case("tracks calls", assert => {
+  const tracked = spy((a: number, b: number) => a + b);
+
+  assert(tracked.called).false();
+  assert(tracked.calls).equals([]);
+
+  tracked(1, 2);
+
+  assert(tracked.called).true();
+  assert(tracked.calls).equals([[1, 2]]);
+  assert(tracked(3, 4)).equals(7);
+});
+```
+
+Pass a second argument to replace the implementation while still tracking calls:
+
+```ts
+import test from "@rcompat/test";
+import spy from "@rcompat/spy";
+
+test.case("mocks implementation", assert => {
+  const tracked = spy(
+    (a: number, b: number) => a + b,
+    (a: number, b: number) => a * b,
+  );
+
+  assert(tracked(2, 3)).equals(6); // mocker runs, not original
+  assert(tracked.calls).equals([[2, 3]]);
+});
+```
+
 ### Intercepting fetch
 
 Use `test.intercept` to block outbound fetch calls to a specific origin and
@@ -392,9 +448,9 @@ test.group(name: string, fn: () => void): void;
 Group test cases under a named scope. Groups can be targeted individually
 when running proby.
 
-| Parameter | Type       | Description                         |
-| --------- | ---------- | ----------------------------------- |
-| `name`    | `string`   | Group name, used by proby to filter |
+| Parameter | Type       | Description                           |
+| --------- | ---------- | ------------------------------------- |
+| `name`    | `string`   | Group name, used by proby to filter   |
 | `fn`      | `function` | Function containing `test.case` calls |
 
 ### `test.mock`
@@ -409,10 +465,10 @@ test.mock<T extends object>(
 Register a module mock and return a handle to the tracked mocked exports.
 Function exports are wrapped so you can inspect `calls` and `called`.
 
-| Parameter   | Type       | Description                                  |
-| ----------- | ---------- | -------------------------------------------- |
-| `specifier` | `string`   | Module specifier to mock                     |
-| `factory`   | `function` | Returns the mocked exports for that module   |
+| Parameter   | Type       | Description                                |
+| ----------- | ---------- | ------------------------------------------ |
+| `specifier` | `string`   | Module specifier to mock                   |
+| `factory`   | `function` | Returns the mocked exports for that module |
 
 ### `test.import`
 
@@ -434,10 +490,10 @@ test.intercept(
 Intercept outbound fetch calls to `base_url`. Returns an `Intercept` object
 for asserting on recorded requests.
 
-| Parameter  | Type       | Description                                               |
-| ---------- | ---------- | --------------------------------------------------------- |
-| `base_url` | `string`   | Origin to intercept, e.g. `"https://api.example.com"`    |
-| `setup`    | `function` | Register route handlers on the setup object               |
+| Parameter  | Type       | Description                                            |
+| ---------- | ---------- | ------------------------------------------------------ |
+| `base_url` | `string`   | Origin to intercept, e.g. `"https://api.example.com"` |
+| `setup`    | `function` | Register route handlers on the setup object            |
 
 ### `test.extend`
 
@@ -450,31 +506,54 @@ test.extend<Subject, Extensions>(
 Create a new test object with custom assertion methods mixed into the
 asserter.
 
-| Parameter | Type       | Description                                                |
-| --------- | ---------- | ---------------------------------------------------------- |
-| `factory` | `function` | Returns extra methods to attach to each `Assert` instance  |
+| Parameter | Type       | Description                                               |
+| --------- | ---------- | --------------------------------------------------------- |
+| `factory` | `function` | Returns extra methods to attach to each `Assert` instance |
+
+### `spy`
+
+```ts
+import spy from "@rcompat/spy";
+
+spy<F extends (...args: any[]) => any>(fn: F, mocker?: F): Tracked<F>;
+```
+
+Wrap a function to track calls. Returns the wrapped function with two extra
+properties.
+
+| Parameter | Type | Description                         |
+| --------- | ---- | ------------------------------------ |
+| `fn`      | `F`  | The function to wrap                 |
+| `mocker`  | `F`  | Optional replacement implementation  |
+
+#### `Tracked<F>`
+
+| Property | Type              | Description                            |
+| -------- | ----------------- | -------------------------------------- |
+| `calls`  | `Parameters<F>[]` | Array of argument tuples, one per call |
+| `called` | `boolean`         | `true` if the function has been called |
 
 #### `Setup`
 
-| Method                 | Description               |
-| ---------------------- | ------------------------- |
-| `get(path, handler)`   | Register a GET handler    |
-| `post(path, handler)`  | Register a POST handler   |
-| `put(path, handler)`   | Register a PUT handler    |
-| `patch(path, handler)` | Register a PATCH handler  |
-| `delete(path, handler)`| Register a DELETE handler |
+| Method                  | Description               |
+| ----------------------- | ------------------------- |
+| `get(path, handler)`    | Register a GET handler    |
+| `post(path, handler)`   | Register a POST handler   |
+| `put(path, handler)`    | Register a PUT handler    |
+| `patch(path, handler)`  | Register a PATCH handler  |
+| `delete(path, handler)` | Register a DELETE handler |
 
 Each handler receives the incoming `Request` and returns a plain object,
 which is serialized into a `Response` automatically.
 
 #### `Intercept`
 
-| Method                  | Description                                     |
-| ----------------------- | ----------------------------------------------- |
-| `calls(path)`           | Number of times `path` was hit                  |
-| `requests(path)`        | Array of `Request` objects recorded for `path`  |
-| `restore()`             | Reinstate the original `globalThis.fetch`       |
-| `[Symbol.dispose]`      | Called automatically by `using`                 |
+| Method             | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `calls(path)`      | Number of times `path` was hit                 |
+| `requests(path)`   | Array of `Request` objects recorded for `path` |
+| `restore()`        | Reinstate the original `globalThis.fetch`      |
+| `[Symbol.dispose]` | Called automatically by `using`                |
 
 ### `Asserter`
 
@@ -486,24 +565,24 @@ The assert function passed to test cases.
 
 ### `Assert<T>`
 
-| Method                  | Description                               |
-| ----------------------- | ----------------------------------------- |
-| `equals(expected)`      | Deep equality check                       |
-| `nequals(expected)`     | Deep inequality check                     |
-| `includes(expected)`    | Inclusion check (string, array, object)   |
-| `true()`                | Assert value is `true`                    |
-| `false()`               | Assert value is `false`                   |
-| `null()`                | Assert value is `null`                    |
-| `undefined()`           | Assert value is `undefined`               |
-| `defined()`             | Assert value is not `undefined`           |
-| `instance(constructor)` | Assert value is instance of class         |
-| `throws(expected?)`     | Assert function throws                    |
-| `tries()`               | Assert function does not throw            |
-| `not`                   | Negate the next assertion                 |
-| `type<T>()`             | Compile-time type assertion               |
-| `nottype<T>()`          | Compile-time negative type assertion      |
-| `pass()`                | Manually pass the assertion               |
-| `fail(reason?)`         | Manually fail the assertion               |
+| Method                  | Description                             |
+| ----------------------- | --------------------------------------- |
+| `equals(expected)`      | Deep equality check                     |
+| `nequals(expected)`     | Deep inequality check                   |
+| `includes(expected)`    | Inclusion check (string, array, object) |
+| `true()`                | Assert value is `true`                  |
+| `false()`               | Assert value is `false`                 |
+| `null()`                | Assert value is `null`                  |
+| `undefined()`           | Assert value is `undefined`             |
+| `defined()`             | Assert value is not `undefined`         |
+| `instance(constructor)` | Assert value is instance of class       |
+| `throws(expected?)`     | Assert function throws                  |
+| `tries()`               | Assert function does not throw          |
+| `not`                   | Negate the next assertion               |
+| `type<T>()`             | Compile-time type assertion             |
+| `nottype<T>()`          | Compile-time negative type assertion    |
+| `pass()`                | Manually pass the assertion             |
+| `fail(reason?)`         | Manually fail the assertion             |
 
 ### Utilities
 
@@ -644,4 +723,3 @@ MIT
 ## Contributing
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) in the repository root.
-

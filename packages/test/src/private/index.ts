@@ -6,10 +6,11 @@ import type Result from "#Result";
 import type Test from "#Test";
 import type { ExtendedTest, Factory } from "#extend";
 import extend from "#extend";
-import repository from "#repository";
+import import_ from "#import";
 import intercept from "#intercept";
 import mock from "#mock";
-import import_ from "#import";
+import repository from "#repository";
+import spy from "#spy";
 
 const base = {
   case(name: string, body: Body) {
@@ -22,6 +23,7 @@ const base = {
     repository.group(name, fn);
   },
   mock,
+  spy,
   import: import_,
 };
 
