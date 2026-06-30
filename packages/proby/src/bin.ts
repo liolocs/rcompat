@@ -40,18 +40,30 @@ if (!is.defined(env.try("PROBY_RELAUNCHED"))) {
 
 import run from "#run";
 
-const [file, group] = runtime.args;
+const VERBOSITY_FLAGS: Record<string, 0 | 1 | 2> = {
+  "-v": 1,
+  "--verbose": 1,
+  "-vv": 2,
+  "--very-verbose": 2,
+};
+
+const verbose = runtime.args.reduce<0 | 1 | 2>(
+  (max, arg) => Math.max(max, VERBOSITY_FLAGS[arg] ?? 0) as 0 | 1 | 2,
+  0,
+);
+
+const [file, group] = runtime.args.filter((arg) => !(arg in VERBOSITY_FLAGS));
 
 if (monorepo) {
   for (const repo of await root.join(packages).list({
     filter: info => info.type === "directory",
   })) {
     for (const dir of include) {
-      await run(repo.join(dir), repo.name, file, group);
+      await run(repo.join(dir), repo.name, file, group, verbose);
     }
   }
 } else {
   for (const dir of include) {
-    await run(root.join(dir), undefined, file, group);
+    await run(root.join(dir), undefined, file, group, verbose);
   }
 }

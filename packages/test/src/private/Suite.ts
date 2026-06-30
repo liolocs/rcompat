@@ -31,7 +31,12 @@ export default class Suite {
 
   async *run() {
     for (const test of this.#tests) {
-      yield await test.run();
+      const start = performance.now();
+      const result = await test.run();
+      const duration = performance.now() - start;
+
+      yield { test: result, duration };
+
       for (const fn of this.#between) {
         fn();
       }
