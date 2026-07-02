@@ -1,9 +1,11 @@
+import assert from "@rcompat/assert";
 import cli from "@rcompat/cli";
 import type { FileRef } from "@rcompat/fs";
 import fs from "@rcompat/fs";
 import is from "@rcompat/is";
 import type { Env } from "@rcompat/test";
 import repository from "@rcompat/test/repository";
+import type { MaybePromise } from "@rcompat/type";
 
 const extensions = [".spec.ts", ".spec.js"];
 
@@ -68,13 +70,9 @@ function print_captured_output(output: CapturedOutput[], indent: string = "") {
     const label = entry.stream === "stdout" ? "Log" : "Error";
     const lines = entry.text.split("\n").filter(line => line.length > 0);
 
-    if (lines.length > 0) {
-      cli.print("\n");
-    }
+    if (lines.length > 0) cli.print("\n");
 
-    for (const line of lines) {
-      cli.print(`${indent}${label}: ${line}\n`);
-    }
+    for (const line of lines) cli.print(`${indent}${label}: ${line}\n`);
   }
 }
 
@@ -223,7 +221,8 @@ type GroupNode = {
 
 type RootItem =
   | { kind: "group"; node: GroupNode }
-  | { kind: "test"; test: SuiteTest };
+  | { kind: "test"; test: SuiteTest }
+  ;
 
 type FileResult = {
   file: FileRef;
@@ -234,10 +233,8 @@ type FileResult = {
 };
 
 function group_failed(node: GroupNode): boolean {
-  return (
-    node.tests.some(t => t.results.some(r => !r.passed)) ||
-    node.children.some(child => group_failed(child))
-  );
+  return node.tests.some(t => t.results.some(r => !r.passed))
+    || node.children.some(group_failed);
 }
 
 async function process_file(
@@ -262,8 +259,7 @@ async function process_file(
 
   let env_module: Env | undefined;
 
-  if (env_file !== null) {
-    const assert = (await import("@rcompat/assert")).default;
+  if (!is.null(env_file)) {
     env_module = assert.shape<Env>((await import(env_file.path)).default, {
       globals: "function",
       setup: "function?",
@@ -277,10 +273,10 @@ async function process_file(
 
   // Captured inside the try (where `context` is inferred from setup),
   // invoked from finally so cleanup runs even when suite iteration throws.
-  let cleanup: (() => Promise<void> | void) | undefined;
+  let cleanup: (() => MaybePromise<void>) | undefined;
 
   try {
-    if (mock_file !== null) await mock_file.import();
+    if (!is.null(mock_file)) await mock_file.import();
     await file.import();
 
     const context = await env_module?.setup?.();
@@ -291,17 +287,17 @@ async function process_file(
     // all spec files share one globalThis, so without restore the globals
     // would leak into subsequent spec files (order-dependent failures).
     const globals = env_module?.globals(context);
-    const appliedGlobals = is.defined(globals)
+    const applied_globals = is.defined(globals)
       ? Object.keys(globals).map(k =>
-          [k, (globalThis as Record<string, unknown>)[k]] as const)
+        [k, (globalThis as Record<string, unknown>)[k]] as const)
       : undefined;
     if (is.defined(globals)) {
       Object.assign(globalThis, globals);
     }
 
     cleanup = async () => {
-      if (appliedGlobals !== undefined) {
-        for (const [k, v] of appliedGlobals) {
+      if (is.defined(applied_globals)) {
+        for (const [k, v] of applied_globals) {
           if (v === undefined) {
             delete (globalThis as Record<string, unknown>)[k];
           } else {

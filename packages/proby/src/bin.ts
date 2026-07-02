@@ -40,7 +40,7 @@ if (!is.defined(env.try("PROBY_RELAUNCHED"))) {
 
 import run from "#run";
 
-const VERBOSITY_FLAGS: Record<string, 0 | 1 | 2> = {
+const verbosity_flags: Dict<0 | 1 | 2> = {
   "-v": 1,
   "--verbose": 1,
   "-vv": 2,
@@ -48,11 +48,11 @@ const VERBOSITY_FLAGS: Record<string, 0 | 1 | 2> = {
 };
 
 const verbose = runtime.args.reduce<0 | 1 | 2>(
-  (max, arg) => Math.max(max, VERBOSITY_FLAGS[arg] ?? 0) as 0 | 1 | 2,
+  (max, arg) => Math.max(max, verbosity_flags[arg] ?? 0) as 0 | 1 | 2,
   0,
 );
 
-const [file, group] = runtime.args.filter((arg) => !(arg in VERBOSITY_FLAGS));
+const [file, group] = runtime.args.filter(arg => !(arg in verbosity_flags));
 
 if (monorepo) {
   for (const repo of await root.join(packages).list({
